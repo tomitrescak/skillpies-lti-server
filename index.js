@@ -1,8 +1,10 @@
+//@ts-check
 require("dotenv").config();
 const path = require("path");
 const routes = require("./src/routes");
 
 const lti = require("ltijs").Provider;
+const jwt = require("jsonwebtoken");
 
 // Setup
 lti.setup(
@@ -23,7 +25,7 @@ lti.setup(
     keysetUrl: "/api/lti/jwks",
     logger: true,
     staticPath: path.join(__dirname, "./public"), // Path to static files
-    ltiaas: true,
+    // ltiaas: true,
     cookies: {
       secure: true, // Set secure to true if the testing platform is in a different domain and https is being used
       sameSite: "None", // Set sameSite to 'None' if the testing platform is in a different domain and https is being used
@@ -32,29 +34,51 @@ lti.setup(
   }
 );
 
-function createLtikURL(base, req, res) {
+function createLtikURL(base, token, req, res) {
   // Extract query parameters from the original request
   const query = req.query;
 
   // Construct the new URL with query parameters
-  let queryString = new URLSearchParams(query).toString();
+  // Clone the query object and remove existing ltik
+  const queryParams = { ...query };
+  delete queryParams.ltik;
+
+  // Add ltik from res.locals.ltik if present
   if (res.locals.ltik) {
-    queryString += `&ltik=${res.locals.ltik}`;
+    queryParams.ltik = res.locals.ltik;
   }
+
+  // Add user info
+  let info = jwt.sign(
+    {
+      payload: token.platformContext?.custom,
+      user: {
+        ...token.userInfo,
+        id: token.user,
+      },
+      roles: token.platformContext.roles,
+    },
+    process.env.LTI_KEY
+  );
+
+  const queryString = new URLSearchParams(queryParams).toString();
   const newUrl = `${base}${queryString ? `?${queryString}` : ""}`;
-  return newUrl;
+  return newUrl + `&info=${info}`;
 }
 
 // When receiving successful LTI launch redirects to app
 lti.onConnect(async (token, req, res) => {
   console.log("Connected");
 
-  const newUrl = createLtikURL("http://localhost:3050/lti/home", req, res);
+  const newUrl = createLtikURL(
+    `${process.env.CLIENT_URL}/lti/home`,
+    token,
+    req,
+    res
+  );
 
   // Redirect to the new URL
   res.redirect(newUrl);
-
-  // return res.sendFile(path.join(__dirname, "./public/index.html"));
 });
 
 // When receiving deep linking request redirects to deep screen
@@ -63,7 +87,12 @@ lti.onDeepLinking(async (token, req, res) => {
 
   console.log("Deep");
 
-  const newUrl = createLtikURL("http://localhost:3050/lti/deep", req, res);
+  const newUrl = createLtikURL(
+    `${process.env.CLIENT_URL}/lti/deep`,
+    token,
+    req,
+    res
+  );
 
   // Redirect to the new URL
   res.redirect(newUrl);

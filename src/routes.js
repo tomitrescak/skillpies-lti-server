@@ -5,6 +5,16 @@ const path = require("path");
 // Requiring Ltijs
 const lti = require("ltijs").Provider;
 
+/**
+ * @typedef {Object} SectionResource
+ * @property {string} sectionId
+ * @property {string} courseId
+ * @property {string} courseName
+ * @property {string} sectionName
+ * @property {string} sectionDescription
+ * @property {string} sectionType
+ */
+
 // Grading route
 router.post("/grade", async (req, res) => {
   try {
@@ -86,110 +96,67 @@ router.get("/members", async (req, res) => {
 });
 
 // Deep linking route
-router.post("/deeplink", async (req, res) => {
-  try {
-    const resource = req.body;
+// router.post("/deeplink", async (req, res) => {
+//   try {
+//     const resource = req.body;
 
-    // const items = [
-    //   {
-    //     type: "ltiResourceLink",
-    //     title: "This is your skillpies link",
-    //     text: "Description of the link",
-    //     url: "https://dev.skillpies.com/api/lti/redirect?resource=resource1",
-    //     // custom: {
-    //     //   // name: "Boo",
-    //     //   // value: "hoo",
-    //     // },
-    //   },
-    // ];
+//     const items = [
+//       {
+//         type: "ltiResourceLink",
+//         title: "Ltijs Demo 1.1.4",
+//         url: "https://dev.skillpies.com/api/lti",
+//         // resource_link_id: "resource1",
 
-    // const items = {
-    //   type: "ltiResourceLink",
-    //   title: "Ltijs Demo",
-    //   custom: {
-    //     name: resource.name || "Name",
-    //     value: resource.value || "Value",
-    //   },
-    // };
+//         custom: {
+//           name: "name",
+//           value: "value",
+//         },
+//       },
+//     ];
 
-    const items = [
-      {
-        type: "ltiResourceLink",
-        title: "Ltijs Demo 1.1.4",
-        url: "https://dev.skillpies.com/api/lti",
-        // resource_link_id: "resource1",
-
-        custom: {
-          name: "name",
-          value: "value",
-        },
-      },
-    ];
-
-    // const items = {
-    //   type: "link",
-    //   title: "SkillPies",
-    //   url: "https://www.skillpies.com",
-    // };
-
-    const form = await lti.DeepLinking.createDeepLinkingForm(
-      res.locals.token,
-      items,
-      { message: "Successfully Registered" }
-    );
-    if (form) return res.send(form);
-    return res.sendStatus(500);
-  } catch (err) {
-    console.log(err.message);
-    return res.status(500).send(err.message);
-  }
-});
+//     const form = await lti.DeepLinking.createDeepLinkingForm(
+//       res.locals.token,
+//       items,
+//       { message: "Successfully Registered" }
+//     );
+//     if (form) return res.send(form);
+//     return res.sendStatus(500);
+//   } catch (err) {
+//     console.log(err.message);
+//     return res.status(500).send(err.message);
+//   }
+// });
 
 router.post("/deeplinkmessage", async (req, res) => {
   try {
-    const token = res.locals.token;
-    const deepLinkedCourses = [
-      { courseName: "My Course", courseId: "c12" },
-    ].map((course) => {
-      // return {
-      //   type: "ltiResourceLink",
-      //   title: course.courseName,
+    /** @type {SectionResource} */
+    const resource = req.body;
 
-      //   url: "https://dev.skillpies.com/api/lti",
-      //   "https://purl.imsglobal.org/spec/lti/claim/target_link_uri":
-      //     "https://dev.skillpies.com/api/lti",
-      //   "https://purl.imsglobal.org/spec/lti/claim/resource_link": {
-      //     id: "my-course-001", // Required by Blackboard
-      //   },
-      //   custom: {
-      //     name: course.courseName,
-      //     value: course.courseId,
-      //   },
-      // };
+    const token = res.locals.token;
+    const deepLinkedCourses = [resource].map((value) => {
       return {
         type: "ltiResourceLink",
-        title: "It worked now",
-        text: 'A & description with quotes and custom parameters"',
-        // url: "https://dev.skillpies.com/api/lti",
-        available: {
-          startDateTime: "2024-09-25T13:00:00.000Z",
-          endDateTime: "2024-10-25T13:00:00.000Z",
-        },
-        submission: {
-          endDateTime: "2024-10-25T13:00:00.000Z",
-        },
+        title: value.sectionName,
+        text: value.sectionDescription,
         custom: {
-          name: course.courseName,
-          value: course.courseId,
-          other: "123",
-          andAnother: 345345,
+          type: value.sectionType,
+          course: value.courseId,
+          section: value.sectionId,
         },
-        lineItem: {
-          scoreMaximum: 100,
-          label: "Chapter 12 quiz",
-          resourceId: "xyzpdq1234",
-          tag: "originality",
-        },
+        // url: "https://dev.skillpies.com/api/lti",
+        // available: {
+        //   startDateTime: "2024-09-25T13:00:00.000Z",
+        //   endDateTime: "2024-10-25T13:00:00.000Z",
+        // },
+        // submission: {
+        //   endDateTime: "2024-10-25T13:00:00.000Z",
+        // },
+        // lineItem: {
+        //   scoreMaximum: 100,
+        //   label: "Chapter 12 quiz",
+        //   resourceId: "xyzpdq1234",
+        //   tag: "originality",
+        // },
       };
     });
     const deepLinkingMessage = await lti.DeepLinking.createDeepLinkingMessage(
@@ -206,25 +173,6 @@ router.post("/deeplinkmessage", async (req, res) => {
     console.log(err.message);
     return res.status(500).send(err.message);
   }
-});
-
-// Return available deep linking resources
-router.get("/resources", async (req, res) => {
-  const resources = [
-    {
-      name: "Resource1",
-      value: "value1",
-    },
-    {
-      name: "Resource2",
-      value: "value2",
-    },
-    {
-      name: "Resource3",
-      value: "value3",
-    },
-  ];
-  return res.send(resources);
 });
 
 // Get user and context information
@@ -269,10 +217,5 @@ router.post("/api/lti/redirect", async (req, res) => {
   // redirect to "/"
   res.redirect("/api/lti", 302);
 });
-
-// Wildcard route to deal with redirecting to React routes
-router.get("*", (req, res) =>
-  res.sendFile(path.join(__dirname, "../public/index.html"))
-);
 
 module.exports = router;

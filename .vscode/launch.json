@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Node.js: Current File",
+      "type": "node",
+      "request": "launch",
+      "env": {
+        "DEBUG": "*"
+      },
+      "program": "${file}", // launches current JS/TS file
+      "console": "integratedTerminal"
+    }
+  ]
+}
